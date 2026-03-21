@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FinAce — Annual Report Analyser</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --text: #e8e8f0;
+    --muted: #7a7a95;
+    --cfa: #4c9ac9;
+    --cfa-light: #7ab8e8;
+    --investor: #4cc98a;
+    --investor-light: #7ae8b0;
+    --danger: #c94c4c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(201,168,76,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    padding: 48px 0 0;
+    text-align: center;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo::before, .logo::after {
+    content: '';
+    width: 30px;
+    height: 1px;
+    background: var(--gold);
+    opacity: 0.5;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+  }
+
+  h1 span {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .tagline {
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+    margin-bottom: 48px;
+  }
+
+  /* API KEY INPUT */
+  .api-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .api-section label {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .api-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .api-input:focus { border-color: var(--gold); }
+  .api-input::placeholder { color: var(--muted); }
+
+  /* MODE SELECTOR */
+  .mode-section {
+    margin-bottom: 32px;
+  }
+
+  .mode-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .mode-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .mode-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mode-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .mode-card.investor::before {
+    background: linear-gradient(135deg, rgba(76,201,138,0.08), transparent);
+  }
+
+  .mode-card.cfa::before {
+    background: linear-gradient(135deg, rgba(76,154,201,0.08), transparent);
+  }
+
+  .mode-card:hover { transform: translateY(-2px); }
+
+  .mode-card.investor:hover, .mode-card.investor.active {
+    border-color: var(--investor);
+    box-shadow: 0 0 30px rgba(76,201,138,0.15);
+  }
+
+  .mode-card.investor:hover::before, .mode-card.investor.active::before { opacity: 1; }
+
+  .mode-card.cfa:hover, .mode-card.cfa.active {
+    border-color: var(--cfa);
+    box-shadow: 0 0 30px rgba(76,154,201,0.15);
+  }
+
+  .mode-card.cfa:hover::before, .mode-card.cfa.active::before { opacity: 1; }
+
+  .mode-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+
+  .mode-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .mode-card.investor .mode-title { color: var(--investor-light); }
+  .mode-card.cfa .mode-title { color: var(--cfa-light); }
+
+  .mode-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .mode-check {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    transition: all 0.2s;
+  }
+
+  .mode-card.investor.active .mode-check {
+    background: var(--investor);
+    border-color: var(--investor);
+    color: #000;
+  }
+
+  .mode-card.cfa.active .mode-check {
+    background: var(--cfa);
+    border-color: var(--cfa);
+    color: #000;
+  }
+
+  /* UPLOAD SECTION */
+  .upload-section { margin-bottom: 32px; }
+
+  .upload-zone {
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--gold);
+    background: var(--surface2);
+  }
+
+  .upload-zone input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .upload-icon { font-size: 40px; margin-bottom: 16px; }
+
+  .upload-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .upload-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .file-loaded {
+    background: var(--surface2);
+    border: 2px solid var(--gold);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .file-loaded-icon { font-size: 24px; }
+
+  .file-loaded-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--gold-light);
+    flex: 1;
+  }
+
+  .file-remove {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px;
+    transition: color 0.2s;
+  }
+  .file-remove:hover { color: var(--danger); }
+
+  /* ANALYSE BUTTON */
+  .btn-analyse {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.25s;
+    margin-bottom: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-analyse:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(201,168,76,0.4);
+  }
+
+  .btn-analyse:disabled {
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-analyse .btn-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* LOADING */
+  .loading-state {
+    text-align: center;
+    padding: 60px 24px;
+    display: none;
+  }
+
+  .loading-state.visible { display: block; }
+
+  .loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 24px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .loading-sub {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* OUTPUT */
+  .output-section {
+    display: none;
+    margin-bottom: 60px;
+  }
+
+  .output-section.visible { display: block; }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .output-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .output-mode-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 100px;
+  }
+
+  .output-mode-badge.investor {
+    background: rgba(76,201,138,0.1);
+    color: var(--investor-light);
+    border: 1px solid rgba(76,201,138,0.3);
+  }
+
+  .output-mode-badge.cfa {
+    background: rgba(76,154,201,0.1);
+    color: var(--cfa-light);
+    border: 1px solid rgba(76,154,201,0.3);
+  }
+
+  .output-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    line-height: 1.8;
+    font-size: 15px;
+  }
+
+  /* Markdown-like rendering */
+  .output-content h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold-light);
+    margin: 28px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .output-content h2:first-child { margin-top: 0; }
+
+  .output-content p { margin-bottom: 12px; color: var(--text); }
+
+  .output-content ul {
+    margin: 8px 0 16px 20px;
+    color: var(--text);
+  }
+
+  .output-content li { margin-bottom: 6px; }
+
+  .output-content strong { color: var(--gold-light); font-weight: 600; }
+
+  .output-content em { color: var(--muted); font-style: italic; }
+
+  .output-content code {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--cfa-light);
+  }
+
+  .verdict-strong { color: var(--investor) !important; font-weight: 700; }
+  .verdict-mixed { color: var(--gold) !important; font-weight: 700; }
+  .verdict-weak { color: var(--danger) !important; font-weight: 700; }
+
+  .btn-new {
+    width: 100%;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 24px;
+  }
+
+  .btn-new:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* ERROR */
+  .error-box {
+    background: rgba(201,76,76,0.1);
+    border: 1px solid rgba(201,76,76,0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    color: #e88a8a;
+    font-size: 14px;
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  .error-box.visible { display: block; }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 40px 0;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 32px 0 48px;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+    line-height: 1.8;
+    border-top: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 600px) {
+    .mode-cards { grid-template-columns: 1fr; }
+    .api-section { flex-direction: column; align-items: flex-start; }
+    .output-content { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo">FinAce</div>
+    <h1>Annual Reports.<br/><span>Decoded Instantly.</span></h1>
+    <p class="tagline">CFA-mapped analysis. Investor-grade insights. Zero prompt engineering.</p>
+  </header>
+
+  <div class="divider"></div>
+
+
+
+  <!-- MODE SELECTOR -->
+  <div class="mode-section">
+    <div class="mode-label">Choose Your Mode</div>
+    <div class="mode-cards">
+      <div class="mode-card investor active" onclick="selectMode('investor')">
+        <div class="mode-check">✓</div>
+        <div class="mode-icon">📈</div>
+        <div class="mode-title">Investor View</div>
+        <div class="mode-desc">Sharp, opinionated analysis for learners and general research. Think like a seasoned investor.</div>
+      </div>
+      <div class="mode-card cfa" onclick="selectMode('cfa')">
+        <div class="mode-check"></div>
+        <div class="mode-icon">🎓</div>
+        <div class="mode-title">CFA Prep Mode</div>
+        <div class="mode-desc">Curriculum-mapped analysis with exam questions. Built for CFA candidates.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-section">
+    <div class="mode-label">Upload Report</div>
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".pdf,.txt" onchange="handleFile(event)"/>
+      <div class="upload-icon">📄</div>
+      <div class="upload-title">Drop your annual report here</div>
+      <div class="upload-sub">PDF or TXT — up to 10MB</div>
+    </div>
+    <div class="file-loaded" id="fileLoaded" style="display:none">
+      <div class="file-loaded-icon">✅</div>
+      <div class="file-loaded-name" id="fileName"></div>
+      <button class="file-remove" onclick="removeFile()">✕</button>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- ANALYSE BUTTON -->
+  <button class="btn-analyse" id="analyseBtn" onclick="analyse()" disabled>
+    <div class="btn-inner">
+      <span>⚡</span>
+      <span>Analyse Report</span>
+    </div>
+  </button>
+
+  <!-- LOADING -->
+  <div class="loading-state" id="loadingState">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Reading between the lines...</div>
+    <div class="loading-sub" id="loadingText">Extracting text from report</div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="output-section" id="outputSection">
+    <div class="output-header">
+      <div class="output-title">Analysis Complete</div>
+      <div class="output-mode-badge" id="outputBadge"></div>
+    </div>
+    <div class="output-content" id="outputContent"></div>
+    <button class="btn-new" onclick="resetApp()">← Analyse Another Report</button>
+  </div>
+
+</div>
+
+<footer>
+  FINACE &nbsp;·&nbsp; This platform is not affiliated with, endorsed by, promoted by, or reviewed by CFA Institute. CFA Institute does not warrant the accuracy or quality of the products or services offered by FinAce. CFA® is a registered trademark of CFA Institute.
+</footer>
+
+<script>
+// ===================== PROMPTS =====================
+
+const INVESTOR_PROMPT = `You are a sharp investor who has read hundreds of annual reports and cuts through corporate noise instantly.
+Your task is to analyse an annual report like you are explaining it to a smart friend who wants the real picture, not what the company wants them to see.
+
+OUTPUT FORMAT — Keep total output within 350–400 words.
+
+1. BUSINESS SNAPSHOT
+Explain in simple words how the company actually makes money. Not the tagline — the real revenue engine. Short but complete.
+
+2. GROWTH QUALITY
+Judge whether growth is truly strong or helped by market conditions, one-offs, leverage, acquisitions, or accounting support. Include 1 key metric → what it means. End with verdict: STRONG / MIXED / WEAK and why.
+
+3. PROFITABILITY HEALTH
+What is the profit trend actually saying? Include 1–2 key metrics → interpretation only. Are margins healthier or temporarily inflated? Is return quality improving structurally or cyclically?
+
+4. RED FLAGS
+What would make a smart investor pause? Include relevant metric → what it signals. Look beyond obvious: debt quality, cash flow mismatch, weak revenue quality, governance concerns, aggressive payouts, weak reinvestment.
+
+5. COMPETITIVE POSITION
+Does this company have a real advantage? Pricing power, switching costs, brand, scale. Verdict: STRONG / AVERAGE / WEAK.
+
+6. BOTTOM LINE
+One sharp paragraph. Core bet + what kills it. Would a rational long-term investor care — yes or no?
+
+7. THINK ABOUT THIS (3 QUESTIONS)
+Questions must add new insight — never repeat what is already in the analysis above.
+
+Q1 (Open-ended):
+A thought-provoking question that builds genuine understanding of this specific business model.
+Perspective: a 2–3 line nudge in the right direction — not the full answer, just enough to make them think deeper.
+
+Q2 (MCQ):
+A question that tests real financial judgement about this company.
+A. option  B. option  C. option  D. option
+Answer: X — explain why in one line using actual company data.
+
+Q3 (Open-ended):
+A forward-looking or risk-based question that forces them to think like an investor.
+Perspective: a 2–3 line nudge in the right direction — just enough to challenge their thinking.
+
+RULES:
+- Smart friend tone, never corporate
+- Opinions mandatory, neutrality not allowed
+- Metrics always followed by interpretation, never standalone numbers
+- Format: metric → what it tells you
+- Questions must feel value-additive, not obvious`;
+
+const CFA_PROMPT = `You are a CFA instructor and seasoned analyst combined.
+Analyse this annual report to help a CFA candidate understand how real companies test the exact concepts they are studying.
+Every section must connect to a specific CFA concept. Not loosely — precisely.
+
+OUTPUT (MAX 450 WORDS):
+
+1. BUSINESS SNAPSHOT
+How does this company make money. 2–3 lines. Plain English.
+
+2. GROWTH QUALITY — CFA LENS
+Organic vs inorganic, earnings sustainability, revenue recognition flags.
+Include 1 key metric → what it means.
+CFA Link: concept + Level + topic area.
+Verdict: STRONG / MIXED / WEAK + why.
+
+3. PROFITABILITY — CFA LENS
+Direction not raw numbers. Include 1–2 key metrics → interpretation only.
+DuPont or ROIC vs WACC where relevant. Are returns improving structurally or cyclically?
+CFA Link: exact framework being tested.
+
+4. RED FLAGS — CFA LENS
+Earnings quality, aggressive accounting, off-balance sheet exposure.
+Include relevant metric per flag → what it signals.
+Each flag → CFA concept it tests.
+
+5. COMPETITIVE POSITION — CFA LENS
+Apply Porter's Five Forces explicitly. Pricing power, switching costs, scale.
+CFA Link: Level 2 Equity — Industry Analysis.
+Verdict: STRONG / AVERAGE / WEAK.
+
+6. EXAM HOOK (MOST IMPORTANT)
+Pick the ONE concept this company is a perfect live case study for.
+Name the concept, CFA Level and topic area.
+Show exactly how this company illustrates it.
+End with a mock question stem + 4 options A/B/C/D + correct answer.
+
+7. CFA EXAM QUESTIONS (5 QUESTIONS)
+Each question must test a DIFFERENT CFA concept. All based on this company's actual data. Cover mix of Level 1 and Level 2.
+Format for each:
+Concept being tested: [name + Level + topic]
+Q: [vignette-style question]
+A. B. C. D.
+Correct Answer: X
+Why: one line linking back to company data.
+MCQ distractors must be believable — wrong options should feel plausible, not obviously incorrect.
+
+8. THINK DEEPER (2 OPEN-ENDED QUESTIONS)
+Q1 (Open-ended): connects a CFA concept to real-world application using this company.
+Perspective: 2–3 line nudge referencing which CFA concept to apply and why it matters here.
+Q2 (Open-ended): forward-looking question applying CFA frameworks to a future scenario.
+Perspective: 2–3 line nudge pointing toward the right analytical framework.
+
+RULES:
+- Every CFA link must be precise, not generic
+- Questions must use actual company data, not hypothetical
+- Metrics always followed by interpretation, never standalone numbers
+- Write like a brilliant study buddy, not a textbook
+- Zero fluff, every line must earn its place`;
+
+// ===================== CONFIG =====================
+// Paste your API key here — never share this file publicly
+const API_KEY = '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';
+
+// ===================== STATE =====================
+let selectedMode = 'investor';
+let fileContent = '';
+let fileName = '';
+
+// ===================== PDF.JS SETUP =====================
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ===================== MODE SELECTION =====================
+function selectMode(mode) {
+  selectedMode = mode;
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.mode-card.${mode}`).classList.add('active');
+  updateButton();
+}
+
+// ===================== FILE HANDLING =====================
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  processFile(file);
+}
+
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+
+async function processFile(file) {
+  fileName = file.name;
+  showError('');
+
+  if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+    setLoadingText('Extracting text from PDF...');
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = '';
+      for (let i = 1; i <= Math.min(pdf.numPages, 80); i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(' ') + '\n';
+      }
+      fileContent = text.slice(0, 20000);
+    } catch (err) {
+      showError('Could not extract PDF text. Try a text-based PDF or paste text instead.');
+      return;
+    }
+  } else {
+    fileContent = await file.text();
+    fileContent = fileContent.slice(0, 20000);
+  }
+
+  document.getElementById('fileLoaded').style.display = 'flex';
+  document.getElementById('fileName').textContent = fileName;
+  uploadZone.style.display = 'none';
+  updateButton();
+}
+
+function removeFile() {
+  fileContent = '';
+  fileName = '';
+  document.getElementById('fileLoaded').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  uploadZone.style.display = 'block';
+  updateButton();
+}
+
+function updateButton() {
+  const btn = document.getElementById('analyseBtn');
+  btn.disabled = !fileContent;
+}
+
+document.getElementById('apiKey') && document.getElementById('apiKey').addEventListener('input', updateButton);
+
+// ===================== LOADING TEXT =====================
+const loadingMessages = [
+  'Reading between the lines...',
+  'Mapping to curriculum frameworks...',
+  'Identifying red flags...',
+  'Generating exam questions...',
+  'Finalising insights...'
+];
+let loadingInterval;
+
+function startLoadingMessages() {
+  let i = 0;
+  document.getElementById('loadingText').textContent = loadingMessages[0];
+  loadingInterval = setInterval(() => {
+    i = (i + 1) % loadingMessages.length;
+    document.getElementById('loadingText').textContent = loadingMessages[i];
+  }, 2500);
+}
+
+function stopLoadingMessages() {
+  clearInterval(loadingInterval);
+}
+
+function setLoadingText(text) {
+  document.getElementById('loadingText').textContent = text;
+}
+
+// ===================== ANALYSE =====================
+async function analyse() {
+  const apiKey = API_KEY;
+  if (!fileContent || !apiKey) return;
+
+  showError('');
+  document.getElementById('analyseBtn').style.display = 'none';
+  document.getElementById('loadingState').classList.add('visible');
+  document.getElementById('outputSection').classList.remove('visible');
+  startLoadingMessages();
+
+  const prompt = selectedMode === 'investor' ? INVESTOR_PROMPT : CFA_PROMPT;
+  const userMessage = `${prompt}\n\nHere is the annual report text to analyse:\n\n${fileContent}`;
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: userMessage }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices[0].message.content;
+
+    stopLoadingMessages();
+    document.getElementById('loadingState').classList.remove('visible');
+    renderOutput(text);
+
+  } catch (err) {
+    stopLoadingMessages();
+    document.getElementById('loadingState').classList.remove('visible');
+    document.getElementById('analyseBtn').style.display = 'block';
+    showError('Error: ' + err.message + '. Check your API key and try again.');
+  }
+}
+
+// ===================== RENDER OUTPUT =====================
+function renderOutput(text) {
+  const badge = document.getElementById('outputBadge');
+  badge.textContent = selectedMode === 'investor' ? 'Investor View' : 'CFA Prep Mode';
+  badge.className = 'output-mode-badge ' + selectedMode;
+
+  // Convert markdown-like text to HTML
+  let html = text
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^#{1,3} (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^---+$/gm, '<hr style="border-color:var(--border);margin:20px 0"/>')
+    .replace(/\bSTRONG\b/g, '<span class="verdict-strong">STRONG</span>')
+    .replace(/\bMIXED\b/g, '<span class="verdict-mixed">MIXED</span>')
+    .replace(/\bWEAK\b/g, '<span class="verdict-weak">WEAK</span>')
+    .replace(/\bAVERAGE\b/g, '<span class="verdict-mixed">AVERAGE</span>')
+    .split('\n')
+    .map(line => {
+      if (line.startsWith('<h2') || line.startsWith('<hr')) return line;
+      if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
+        return '<li>' + line.trim().slice(2) + '</li>';
+      }
+      if (line.trim() === '') return '</ul><br>';
+      return line;
+    })
+    .join('\n')
+    .replace(/(<li>.*<\/li>\n?)+/g, match => `<ul>${match}</ul>`);
+
+  // Wrap paragraphs
+  html = html.replace(/^(?!<[hul]|<br|<hr)(.+)$/gm, '<p>$1</p>');
+
+  document.getElementById('outputContent').innerHTML = html;
+  document.getElementById('outputSection').classList.add('visible');
+  document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ===================== HELPERS =====================
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.classList.toggle('visible', !!msg);
+}
+
+function resetApp() {
+  removeFile();
+  document.getElementById('outputSection').classList.remove('visible');
+  document.getElementById('analyseBtn').style.display = 'block';
+  document.getElementById('analyseBtn').disabled = true;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
