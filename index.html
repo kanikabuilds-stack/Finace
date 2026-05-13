@@ -1011,13 +1011,47 @@ CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation outs
 The JSON must follow this exact schema:
 {
   "businessSnapshot": "2-3 sentences on how the company actually makes money. Real revenue engine, not tagline.",
-  "keyMetrics": [
-    {"name": "Revenue Growth YoY", "value": "extract from report or estimate", "trend": "up|down|flat", "interpretation": "what this means for investors"},
-    {"name": "Net Profit Margin", "value": "extract or estimate", "trend": "up|down|flat", "interpretation": "margin quality assessment"},
-    {"name": "ROE", "value": "extract or estimate", "trend": "up|down|flat", "interpretation": "return quality comment"},
-    {"name": "Debt-to-Equity", "value": "extract or estimate", "trend": "up|down|flat", "interpretation": "leverage risk"},
-    {"name": "CFO / Net Income", "value": "extract or estimate", "trend": "up|down|flat", "interpretation": "earnings quality signal"}
-  ],
+ "keyMetrics": [
+  {
+    "name": "Revenue Growth YoY",
+    "value": "Calculate using actual extracted revenue values: ((Current Year Revenue - Previous Year Revenue) / Previous Year Revenue) × 100. Return ONLY final value like 12.4%",
+    "trend": "up|down|flat",
+    "interpretation": "what this means for investors"
+  },
+  {
+    "name": "Net Profit Margin",
+    "value": "Calculate using actual extracted values: (Net Profit / Total Revenue) × 100. Return ONLY final value like 18.2%",
+    "trend": "up|down|flat",
+    "interpretation": "margin quality assessment"
+  },
+  {
+    "name": "ROE",
+    "value": "Calculate using actual extracted values: (Net Profit / Shareholders Equity) × 100. Return ONLY final value like 15.7%",
+    "trend": "up|down|flat",
+    "interpretation": "return quality comment"
+  },
+  {
+    "name": "Debt-to-Equity",
+    "value": "Calculate using actual extracted values: Total Debt / Shareholders Equity. Return ONLY final value like 1.4x",
+    "trend": "up|down|flat",
+    "interpretation": "leverage risk"
+  },
+  {
+    "name": "CFO / Net Income",
+    "value": "Calculate using actual extracted values: Cash Flow from Operations / Net Profit. Return ONLY final value like 1.2x",
+    "trend": "up|down|flat",
+    "interpretation": "earnings quality signal"
+  }
+],
+
+STRICT RULES:
+- Always compute using actual numbers from the annual report
+- Perform calculations before generating output
+- Never show formulas in final JSON output
+- Never return placeholders like 'Not provided' or 'N/A'
+- All percentages must end with %
+- All ratios must end with x
+- Keep outputs concise and investor-readable
   "growthQuality": {
     "analysis": "2-3 sentences judging organic vs inorganic, one-offs, accounting boosts",
     "verdict": "STRONG|MIXED|WEAK",
