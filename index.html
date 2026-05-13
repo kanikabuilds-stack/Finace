@@ -1359,113 +1359,14 @@ function renderInvestorOutput(d) {
   badge.className = 'output-mode-badge investor';
 
   let html = '';
-  let filteredMetrics = [];
-
-  html += sectionCard('📍', '1', 'Business Snapshot', `<p>${d.businessSnapshot || ''}</p>`);
-
-  if (d.keyMetrics && d.keyMetrics.length) {
-    filteredMetrics = d.keyMetrics.filter(m => {
-      const value = (m.value || '').toString().toLowerCase();
-      const invalid =
-        value.includes('not explicitly stated') ||
-        value.includes('not available') ||
-        value.includes('n/a') ||
-        value.includes('unable') ||
-        value.includes('missing');
-      const numeric = parseFloat(value.replace(/[^0-9.-]/g, ''));
-      return !invalid && !isNaN(numeric);
-    });
-
-    let metricsHtml = '<div class="metrics-grid">';
-    filteredMetrics.forEach(m => {
-      const trendIcon = m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : '→';
-      metricsHtml += `
-        <div class="metric-card trend-${m.trend || 'flat'}">
-          <div class="metric-name">${m.name}</div>
-          <div class="metric-value">${m.value} <span class="metric-trend">${trendIcon}</span></div>
-          <div class="metric-interpretation">${m.interpretation}</div>
-        </div>`;
-    });
-    metricsHtml += '</div>';
-    html += `<div class="section-card">${metricsHtml}</div>`;
-
-    if (filteredMetrics.length > 0) {
-      html += `<div class="section-card"><div class="chart-label">KEY METRICS AT A GLANCE</div><div class="chart-container" style="height:260px"><canvas id="metricsChart"></canvas></div></div>`;
-    }
-  }
-
-  if (d.growthQuality) {
-    const v = d.growthQuality.verdict || '';
-    html += sectionCard('📈', '2', `Growth Quality <span class="verdict-badge verdict-${v}">${v}</span>`,
-      `<p>${d.growthQuality.analysis}</p><p style="color:var(--muted);font-size:13px;font-style:italic">${d.growthQuality.verdictReason || ''}</p>`);
-  }
-
-  if (d.profitability) {
-    html += sectionCard('💰', '3', 'Profitability Health',
-      `<p>${d.profitability.analysis}</p><div class="cfa-link-tag">📊 Trend: ${d.profitability.trending || 'stable'}</div>`);
-  }
-
-  if (d.redFlags && d.redFlags.length) {
-    let flagsHtml = '';
-    d.redFlags.forEach(f => {
-      flagsHtml += `
-        <div class="red-flag-item">
-          <div class="red-flag-title">🚩 ${f.flag}</div>
-          <div class="red-flag-metric">${f.metric}</div>
-        </div>`;
-    });
-    html += sectionCard('⚠️', '4', 'Red Flags', flagsHtml);
-  }
-
-  if (d.competitivePosition) {
-    const v = d.competitivePosition.verdict || '';
-    html += sectionCard('🏆', '5', `Competitive Position <span class="verdict-badge verdict-${v}">${v}</span>`,
-      `<p>${d.competitivePosition.analysis}</p>`);
-  }
-
-  if (d.bottomLine) {
-    html += `<div class="bottom-line">
-      <div class="mode-label" style="margin-bottom:12px">⚡ BOTTOM LINE</div>
-      <div class="bottom-line-text">${d.bottomLine}</div>
-    </div>`;
-  }
-
-  if (d.thinkAboutThis && d.thinkAboutThis.length) {
-    html += `<div class="section-card"><div class="questions-header">🧠 Think About This</div>`;
-    d.thinkAboutThis.forEach((q, i) => {
-      if (q.type === 'open') {
-        html += `<div class="open-question-block">
-          <div class="open-question-label">Q${i+1} — Open Question</div>
-          <div class="open-question-text">${q.question}</div>
-          <div class="open-question-perspective">${q.perspective}</div>
-        </div>`;
-      } else if (q.type === 'mcq') {
-        html += buildMCQ(q, `inv_${i}`, i+1);
-      }
-    });
-    html += `</div>`;
-  }
-
-  document.getElementById('outputContent').innerHTML = html;
-  document.getElementById('outputSection').classList.add('visible');
-  document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth' });
-
-  setTimeout(() => {
-    if (filteredMetrics.length > 0) {
-      renderMetricsChart(filteredMetrics);
-    }
-    attachMCQHandlers();
-  }, 100);
-}
 
   // Business Snapshot
   html += sectionCard('📍', '1', 'Business Snapshot', `<p>${d.businessSnapshot || ''}</p>`);
 
   // Key Metrics Grid
-let filteredMetrics = [];
+ if (d.keyMetrics && d.keyMetrics.length) {
 
-if (d.keyMetrics && d.keyMetrics.length) {
-  filteredMetrics = d.keyMetrics.filter(m => {
+  const filteredMetrics = d.keyMetrics.filter(m => {
 
     const value = (m.value || '').toString().toLowerCase();
     const interp = (m.interpretation || '').toLowerCase();
@@ -1500,9 +1401,8 @@ if (d.keyMetrics && d.keyMetrics.length) {
     html += `<div class="section-card">${metricsHtml}</div>`;
 
     // Chart
-   if (filteredMetrics && filteredMetrics.length > 0) {
-  html += `<div class="section-card"><div class="chart-label">KEY METRICS AT A GLANCE</div><div class="chart-container" style="height:260px"><canvas id="metricsChart"></canvas></div></div>`;
-}
+    html += `<div class="section-card"><div class="chart-label">KEY METRICS AT A GLANCE</div><div class="chart-container" style="height:260px"><canvas id="metricsChart"></canvas></div></div>`;
+  }
 
   // Growth Quality
   if (d.growthQuality) {
