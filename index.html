@@ -1363,9 +1363,31 @@ function renderInvestorOutput(d) {
   html += sectionCard('📍', '1', 'Business Snapshot', `<p>${d.businessSnapshot || ''}</p>`);
 
   // Key Metrics Grid
-  if (d.keyMetrics && d.keyMetrics.length) {
-    let metricsHtml = '<div class="metrics-grid">';
-    d.keyMetrics.forEach(m => {
+ if (d.keyMetrics && d.keyMetrics.length) {
+
+  const filteredMetrics = d.keyMetrics.filter(m => {
+
+    const value = (m.value || '').toString().toLowerCase();
+    const interp = (m.interpretation || '').toLowerCase();
+
+    const invalid =
+      value.includes('not explicitly stated') ||
+      value.includes('not available') ||
+      value.includes('n/a') ||
+      value.includes('unable') ||
+      value.includes('missing') ||
+      interp.includes('difficult to assess');
+
+    const numeric = parseFloat(
+      value.replace(/[^0-9.-]/g, '')
+    );
+
+    return !invalid && !isNaN(numeric);
+  });
+
+  let metricsHtml = '<div class="metrics-grid">';
+
+  filteredMetrics.forEach(m => {
       const trendIcon = m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : '→';
       metricsHtml += `
         <div class="metric-card trend-${m.trend || 'flat'}">
@@ -1446,7 +1468,9 @@ function renderInvestorOutput(d) {
 
   // Render chart after DOM is ready
   setTimeout(() => {
-    if (d.keyMetrics && d.keyMetrics.length) renderMetricsChart(d.keyMetrics);
+   if (filteredMetrics && filteredMetrics.length) {
+  renderMetricsChart(filteredMetrics);
+}
     attachMCQHandlers();
   }, 100);
 }
