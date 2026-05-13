@@ -1364,9 +1364,10 @@ function renderInvestorOutput(d) {
   html += sectionCard('📍', '1', 'Business Snapshot', `<p>${d.businessSnapshot || ''}</p>`);
 
   // Key Metrics Grid
- if (d.keyMetrics && d.keyMetrics.length) {
+let filteredMetrics = [];
 
-  const filteredMetrics = d.keyMetrics.filter(m => {
+if (d.keyMetrics && d.keyMetrics.length) {
+  filteredMetrics = d.keyMetrics.filter(m => {
 
     const value = (m.value || '').toString().toLowerCase();
     const interp = (m.interpretation || '').toLowerCase();
