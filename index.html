@@ -1003,7 +1003,9 @@ ETHICS:
 `;
 
 // ===================== PROMPTS =====================
-const INVESTOR_PROMPT = `You are a sharp senior investor who has read thousands of annual reports.
+const INVESTOR_PROMPT = `ABSOLUTE RULE: Every metric value field must contain ONLY a number with its unit (% or x). Never return phrases, never return 'N/A', never return 'not available'. If a number cannot be found, estimate intelligently from related figures. A blank or text value is a failure.
+
+You are a sharp senior investor who has read thousands of annual reports.
 Analyse this annual report and return a JSON response ONLY — no text before or after the JSON.
 
 CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation outside the JSON.
@@ -1011,36 +1013,36 @@ CRITICAL: Return ONLY valid JSON. No markdown, no backticks, no explanation outs
 The JSON must follow this exact schema:
 {
   "businessSnapshot": "2-3 sentences on how the company actually makes money. Real revenue engine, not tagline.",
- "keyMetrics": [
+  "keyMetrics": [
   {
     "name": "Revenue Growth YoY",
-    "value": "Calculate using actual extracted revenue values: ((Current Year Revenue - Previous Year Revenue) / Previous Year Revenue) × 100. Return ONLY final value like 12.4%",
+    "value": "YOU MUST calculate this. Find current and previous year revenue in the report. Compute ((current - previous) / previous) * 100. Return ONLY the number with % like 14.2%. If only one year exists return 0%.",
     "trend": "up|down|flat",
-    "interpretation": "what this means for investors"
+    "interpretation": "one line investor comment"
   },
   {
     "name": "Net Profit Margin",
-    "value": "Calculate using actual extracted values: (Net Profit / Total Revenue) × 100. Return ONLY final value like 18.2%",
+    "value": "YOU MUST calculate (Net Profit / Revenue) * 100. Return ONLY like 18.3%. Never return text.",
     "trend": "up|down|flat",
-    "interpretation": "margin quality assessment"
+    "interpretation": "one line"
   },
   {
     "name": "ROE",
-    "value": "Calculate using actual extracted values: (Net Profit / Shareholders Equity) × 100. Return ONLY final value like 15.7%",
+    "value": "YOU MUST calculate (Net Profit / Shareholders Equity) * 100. Return ONLY like 22.1%.",
     "trend": "up|down|flat",
-    "interpretation": "return quality comment"
+    "interpretation": "one line"
   },
   {
     "name": "Debt-to-Equity",
-    "value": "Calculate using actual extracted values: Total Debt / Shareholders Equity. Return ONLY final value like 1.4x",
+    "value": "YOU MUST calculate Total Debt / Shareholders Equity. Return ONLY like 1.4x.",
     "trend": "up|down|flat",
-    "interpretation": "leverage risk"
+    "interpretation": "one line"
   },
   {
     "name": "CFO / Net Income",
-    "value": "Calculate using actual extracted values: Cash Flow from Operations / Net Profit. Return ONLY final value like 1.2x",
+    "value": "YOU MUST calculate CFO / Net Profit. Return ONLY like 1.2x.",
     "trend": "up|down|flat",
-    "interpretation": "earnings quality signal"
+    "interpretation": "one line"
   }
 ],
 
@@ -1053,7 +1055,6 @@ STRICT RULES:
 - All ratios must end with x
 - Keep outputs concise and investor-readable
 ],
-
 "analysisRules": [
   "Think like a real equity research analyst",
   "If ratios are not directly disclosed, derive them intelligently using related financial statement figures",
