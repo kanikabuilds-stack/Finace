@@ -1401,8 +1401,9 @@ function renderInvestorOutput(d) {
     html += `<div class="section-card">${metricsHtml}</div>`;
 
     // Chart
-    html += `<div class="section-card"><div class="chart-label">KEY METRICS AT A GLANCE</div><div class="chart-container" style="height:260px"><canvas id="metricsChart"></canvas></div></div>`;
-  }
+   if (filteredMetrics && filteredMetrics.length > 0) {
+  html += `<div class="section-card"><div class="chart-label">KEY METRICS AT A GLANCE</div><div class="chart-container" style="height:260px"><canvas id="metricsChart"></canvas></div></div>`;
+}
 
   // Growth Quality
   if (d.growthQuality) {
