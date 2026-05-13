@@ -1605,11 +1605,14 @@ function renderMetricsChart(metrics) {
   // Extract numeric values for chart (strip %, x, etc.)
 const rawValues = metrics.map(m => {
   const num = parseFloat(m.value.toString().replace(/[^0-9.-]/g, ''));
-  return isNaN(num) ? 1 : Math.abs(num) || 1;
+  return isNaN(num) ? 0 : Math.abs(num) || 0;
 });
-const maxVal = Math.max(...rawValues);
-// Normalize + guarantee minimum bar height of 8 so nothing disappears
-const values = rawValues.map(v => Math.max((v / maxVal) * 100, 8));
+// Rank-based heights: all bars clearly visible, real values in tooltip
+const sorted = [...rawValues].sort((a,b) => b - a);
+const values = rawValues.map(v => {
+  const rank = sorted.indexOf(v);
+  return Math.max(100 - (rank * 15), 25);
+});
 
   new Chart(ctx, {
     type: 'bar',
