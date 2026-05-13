@@ -1603,10 +1603,13 @@ function renderMetricsChart(metrics) {
   );
 
   // Extract numeric values for chart (strip %, x, etc.)
-  const values = metrics.map(m => {
-    const num = parseFloat(m.value.toString().replace(/[^0-9.-]/g, ''));
-    return isNaN(num) ? 0 : Math.abs(num);
-  });
+const rawValues = metrics.map(m => {
+  const num = parseFloat(m.value.toString().replace(/[^0-9.-]/g, ''));
+  return isNaN(num) ? 0.1 : Math.abs(num) || 0.1;
+});
+const maxVal = Math.max(...rawValues);
+// Normalize all to 0-100 scale so every bar is visible
+const values = rawValues.map(v => (v / maxVal) * 100);
 
   new Chart(ctx, {
     type: 'bar',
